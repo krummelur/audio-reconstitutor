@@ -5,6 +5,7 @@ import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D;
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.TreeMap;
 
 import edu.illinois.cs.cs125.lib.wavfile.WavFile;
@@ -13,12 +14,11 @@ import edu.illinois.cs.cs125.lib.wavfile.WavFileException;
 
 public class main {
     static double sampleRate = 44100.0;
-    static int numVoices = 200;
-    static double[] phaseArray = new double[numVoices];
+    static int numVoices = 500;
+    static int fadeInOutSamples = 2048;
 
     public static void main(String[] args) {
         AudioStuff as = new AudioStuff();
-        //double[] signal = as.createSampleWithFrequency(200, 44100, 1, 1, 0);
         double[]signal = loadAudioFile("sample.wav");
         int FFTSIZE = 1024*32;
         int samplesPerChunk = FFTSIZE/8;
@@ -61,8 +61,12 @@ public class main {
                 }
             }
             //peakMap.forEach();
-            double[] currentChunkOutput = new double[samplesPerChunk];
-            System.out.println("DONE");
+
+            double[] currentChunkOutput = new double[samplesPerChunk + fadeInOutSamples];
+            if(offset != 0) {
+                System.arraycopy(outputSignal, offset, currentChunkOutput, 0, fadeInOutSamples);
+            }
+            System.out.println( String.format("%.2f", (double)offset / totalOutputLength * 100) + " %");
             double maxAmplitude = peakMap.lastKey();
             if (!peakMap.isEmpty()) {
                 int currentEntry = 0;
@@ -71,18 +75,16 @@ public class main {
                             entry.getValue(),
                             sampleRate,
                             entry.getKey() / maxAmplitude / 12,
-                            currentChunkOutput.length/sampleRate,
-                            phaseArray,
-                            currentEntry);
-                    for (int i = 0; i < samplesPerChunk; i++) {
+                            currentChunkOutput.length / sampleRate,
+                            fadeInOutSamples,
+                            t -> as.saw(t));
+                    for (int i = 0; i < currentChunkOutput.length; i++) {
                         currentChunkOutput[i] += newTone[i];
                     }
                 }
-                System.out.println("CSCLEN = " + currentSignalChunk.length + ", outputsignalLength: " + outputSignal.length + ", offset: " + offset);
-                System.arraycopy(currentChunkOutput, 0, outputSignal, offset, currentChunkOutput.length);
+                System.arraycopy(currentChunkOutput, 0, outputSignal, offset, Math.min(currentChunkOutput.length, outputSignal.length-offset));
                 offset += samplesPerChunk;
             }
-            System.out.println("PMS: " + peakMap.size());
         }
         WavFile wf = null;
         try {
@@ -116,35 +118,46 @@ public class main {
 }
 
 class AudioStuff {
+    public static final double PI = Math.PI;
+    Random random = new Random();
 
-    public TreeMap<Double, Double> findFundamentals(TreeMap<Double, Double> frequencyList, int numberOfFundamentals) {
-        double average = 0;
-        double total = frequencyList.values()
-                .stream()
-                .mapToDouble(Double::valueOf)
-                .sum();
-        average = total / frequencyList.entrySet().size();
-        TreeMap<Double, Double> sortedFundamentals = new TreeMap<>();
-        int i = 0;
-        for (Map.Entry<Double, Double> entry : frequencyList.entrySet()) {
-            if (i >= numberOfFundamentals)
-                break;
-            sortedFundamentals.put(entry.getKey(), entry.getValue());
-        }
-        return sortedFundamentals;
-    }
-
-    double[] createSampleWithFrequency(double frequency, double sampleRate, double amplitude, double lengthSeconds, double[] previousPhases, int phaseNo) {
+    double[] createSampleWithFrequency(double frequency, double sampleRate, double amplitude, double lengthSeconds, int fadeInOutSamples, SignalGenerator gen) {
+        //frequency = 220;
+        //double fadeSinDivisor = (fadeInOutSamples)/(Math.PI);
+        double fadeSinDivisor = (fadeInOutSamples*2)/(Math.PI);
+        double phase = random.nextDouble()*Math.PI*2;
+        //phase = 0;
         double[] signal = new double[(int) (sampleRate * lengthSeconds)];
         for (int i = 0; i < signal.length; i++) {
-            signal[i] = Math.sin(previousPhases[phaseNo] + ((Math.PI / sampleRate) * (double)i * frequency * 2)) * amplitude;
-            if(i == signal.length-1) {
 
-                //previousPhases[phaseNo] = previousPhases[phaseNo] + ((Math.PI / sampleRate) * i * frequency * 2);
+            signal[i] = gen.generate(phase + ((Math.PI / sampleRate) * (double)i * frequency * 2)) * amplitude;
+            //signal[i] = 0.2;
+            if(i < fadeInOutSamples) {
+                //signal[i] = signal[i] * (1+Math.sin((double)i/fadeSinDivisor-Math.PI/2))/2;
+                signal[i] = signal[i] * (Math.sin((double)i/fadeSinDivisor));
+            }
+            if(i > signal.length - fadeInOutSamples) {
+                //signal[i] = signal[i] * (1+Math.sin(-1.0*((double)(i-signal.length)/fadeSinDivisor+Math.PI/2)))/2;
+                signal[i] = signal[i] * (Math.sin(-1.0*((double)(i-signal.length)/fadeSinDivisor)));
             }
         }
         return signal;
     }
 
+    public double square(double t) {
+        return (Math.floor(Math.sin(t)) * 2 + 1);
+    }
+
+    public double tri(double t) {
+        return -1*Math.abs( ((t+PI/2)%(2*PI)-PI)/(PI/2))+1;
+    }
+
+    public double saw(double t) {
+        return ((t/PI-1)%(2)-1);
+    }
+
+    interface SignalGenerator {
+        double generate(double t);
+    }
 }
 
