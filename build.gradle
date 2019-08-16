@@ -1,0 +1,19 @@
+group 'se.fredriksonsound.audioreconstitutor'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    maven { url "https://jitpack.io" }
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+
+// https://mvnrepository.com/artifact/edu.emory.mathcs/JTransforms
+    implementation 'com.github.cs125-illinois:wavfile:0.1'
+    compile group: 'edu.emory.mathcs', name: 'JTransforms', version: '2.4'
+}

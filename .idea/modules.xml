@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/audioreconstitutor.iml" filepath="$PROJECT_DIR$/.idea/modules/audioreconstitutor.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/audioreconstitutor_main.iml" filepath="$PROJECT_DIR$/.idea/modules/audioreconstitutor_main.iml" group="audioreconstitutor" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/audioreconstitutor_test.iml" filepath="$PROJECT_DIR$/.idea/modules/audioreconstitutor_test.iml" group="audioreconstitutor" />
+    </modules>
+  </component>
+</project>
